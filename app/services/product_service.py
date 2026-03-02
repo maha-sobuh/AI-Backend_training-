@@ -1,4 +1,4 @@
-from schemas.product import productCreat , productResponse
+from schemas.product import productCreat , productResponse , filterParams
 products_DB = [] 
 counter = 1 
 
@@ -25,3 +25,25 @@ def found_product(id : int) -> productResponse :
         if i["id"] == id : 
             return productResponse(**i) 
     return None 
+
+def list_products(filters : filterParams ) : 
+    filtered = [
+        p for p in products_DB 
+        if p["price"]>=filters.min_price and (filters.max_price==0 or p["price"]<= filters.max_price) 
+    ]
+
+    if filters.in_stock is not None : 
+        filtered = [
+            p for p in filtered 
+            if (p["quantity"]>0) == filters.in_stock 
+        ]
+    start = filters.offset 
+    end = start+filters.limit 
+    paginated = filtered[start:end] 
+
+    return {
+        "total":len(filtered), 
+        "limit":filters.limit, 
+        "offset":filters.offset , 
+        "items":paginated 
+    }

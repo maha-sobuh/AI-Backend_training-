@@ -1,6 +1,6 @@
-from fastapi import APIRouter , HTTPException , Path
-from schemas.product import productResponse , productCreat 
-from services.product_service import create_product,found_product
+from fastapi import APIRouter , HTTPException , Path , Query
+from schemas.product import productResponse , productCreat , filterParams
+from services.product_service import create_product,found_product , list_products
 from typing import Annotated 
 
 router = APIRouter() 
@@ -18,4 +18,13 @@ def get_product(id : Annotated[ int , Path(gt=0)]) :
     if result is None: 
         raise HTTPException(status_code=404 , detail={"detail": "Product not found", "error_code": "NOT_FOUND"}) 
     return result 
+
+
+@router.get("/products") 
+def get_products(filters: Annotated [filterParams , Query()]): 
+    if filters.max_price!=0 and filters.min_price > filters.max_price : 
+        raise HTTPException(status_code=400 , detail="min price can not be greater than max price ") 
+    return list_products(filters) 
+
+
 

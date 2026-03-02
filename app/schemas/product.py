@@ -19,3 +19,11 @@ class productResponse(BaseModel) :
     price: float
     quantity: int
     category: CategoryEnum
+
+class filterParams(BaseModel) : 
+    min_price : float = Field(0.0, ge=0.0)
+    max_price :float=Field(0.0, ge=0.0) 
+    in_stock : bool = None
+    limit : int = Field(10 ,le=100)
+    offset:int = Field(0 , ge=0) 
+
