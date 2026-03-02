@@ -1,4 +1,4 @@
-from schemas.product import productCreat , productResponse , filterParams
+from schemas.product import productCreat , productResponse , filterParams , productUpdate
 products_DB = [] 
 counter = 1 
 
@@ -47,3 +47,20 @@ def list_products(filters : filterParams ) :
         "offset":filters.offset , 
         "items":paginated 
     }
+
+def update_product(id , updates:productUpdate) : 
+    product=None 
+    for p in products_DB : 
+        if id == p["id"]:
+            product=p 
+    if product is None :
+        return product 
+    if updates.name : 
+        product["name"]=updates.name 
+    if updates.price : 
+        product["price"]=updates.price 
+    if updates.category: 
+        product["category"]= updates.category 
+    if updates.quantity : 
+        product["quantity"]=updates.quantity 
+    return product 

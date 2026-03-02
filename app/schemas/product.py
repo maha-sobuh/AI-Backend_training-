@@ -1,5 +1,6 @@
 from pydantic import BaseModel , Field 
 from enum import Enum
+from typing import Optional 
 
 class CategoryEnum(str , Enum ): 
     electronics = "electronics" 
@@ -26,4 +27,10 @@ class filterParams(BaseModel) :
     in_stock : bool = None
     limit : int = Field(10 ,le=100)
     offset:int = Field(0 , ge=0) 
+
+class productUpdate(BaseModel): 
+    name:Optional[str]=None 
+    price:Optional[float]=Field(None , ge=0)
+    quantity: Optional[int] = Field(None, ge=0)
+    category: Optional[str] = None
 

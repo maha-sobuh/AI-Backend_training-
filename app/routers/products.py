@@ -1,6 +1,6 @@
 from fastapi import APIRouter , HTTPException , Path , Query
-from schemas.product import productResponse , productCreat , filterParams
-from services.product_service import create_product,found_product , list_products
+from schemas.product import productResponse , productCreat , filterParams,productUpdate
+from services.product_service import create_product,found_product , list_products,update_product
 from typing import Annotated 
 
 router = APIRouter() 
@@ -26,5 +26,13 @@ def get_products(filters: Annotated [filterParams , Query()]):
         raise HTTPException(status_code=400 , detail="min price can not be greater than max price ") 
     return list_products(filters) 
 
+@router.patch("/products/{id}")
+def patch_product(id:int , updates:productUpdate):
+    product=update_product(id , updates) 
+    if product is None: 
+        raise HTTPException(status_code=404 , detail="product not found") 
+    if not any([updates.name , updates.price , updates.quantity , updates.category]): 
+        raise HTTPException(status_code=400 , detail="must provide one update at least")
+    return product 
 
 
