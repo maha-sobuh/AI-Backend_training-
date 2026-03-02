@@ -20,3 +20,8 @@ def create_product(product: productCreat) -> productResponse :
 
     return productResponse(**new_product) 
 
+def found_product(id : int) -> productResponse : 
+    for i in products_DB : 
+        if i["id"] == id : 
+            return productResponse(**i) 
+    return None 
