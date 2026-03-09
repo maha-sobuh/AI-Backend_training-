@@ -1,66 +1,89 @@
 from schemas.product import productCreat , productResponse , filterParams , productUpdate
-products_DB = [] 
-counter = 1 
+from models import Product 
+from sqlmodel import SQLModel , Session , select 
+from fastapi import HTTPException
 
-def create_product(product: productCreat) -> productResponse : 
-    global counter 
-    for p in products_DB : 
-        if p["name"]==product.name : ##lower? 
-            return None 
+########################################## 
+def create_product(product: productCreat , db:Session) -> productResponse : 
+
+    existing = db.exec(select(Product).where(Product.name == product.name)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Product already exists")
     
-    new_product = { 
-        "id" : counter ,
-        "name": product.name , 
-        "price":product.price , 
-        "category":product.category , 
-        "quantity":product.quantity 
-    }
-    products_DB.append(new_product) 
-    counter +=1 
+    new_product = Product(
+        name=product.name,
+        price=product.price,
+        quantity=product.quantity,
+        category=product.category
+    )
+    
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)  # fetches the generated id , created_at
+    
+    return new_product
 
-    return productResponse(**new_product) 
+def found_product(id : int ,db:Session ) -> productResponse : 
+    result = db.exec(select(Product).where(Product.id==id)).first()
+    if result is None: 
+        raise HTTPException(status_code=404 , detail={"detail": "Product not found", "error_code": "NOT_FOUND"}) 
+    return productResponse.model_validate(result)
 
-def found_product(id : int) -> productResponse : 
-    for i in products_DB : 
-        if i["id"] == id : 
-            return productResponse(**i) 
-    return None 
 
-def list_products(filters : filterParams ) : 
-    filtered = [
-        p for p in products_DB 
-        if p["price"]>=filters.min_price and (filters.max_price==0 or p["price"]<= filters.max_price) 
-    ]
+def list_products(filters : filterParams  , db:Session) : 
+    if filters.max_price!=0 and filters.min_price > filters.max_price : 
+        raise HTTPException(status_code=400 , detail="min price can not be greater than max price ") 
+    query = select(Product) 
 
+    if filters.min_price>0 : 
+        query=query.where(Product.price>=filters.min_price) 
+    if filters.max_price>0: 
+        query=query.where(Product.price<=filters.max_price) 
+    
     if filters.in_stock is not None : 
-        filtered = [
-            p for p in filtered 
-            if (p["quantity"]>0) == filters.in_stock 
-        ]
-    start = filters.offset 
-    end = start+filters.limit 
-    paginated = filtered[start:end] 
+        if filters.in_stock : 
+            query=query.where(Product.quantity!=0) 
+        else : 
+            query=query.where(Product.quantity== 0) 
+    
+    total = len(db.exec(query).all())####check
+    query = query.offset(filters.offset).limit(filters.limit)
+    products = db.exec(query).all()
 
     return {
-        "total":len(filtered), 
-        "limit":filters.limit, 
-        "offset":filters.offset , 
-        "items":paginated 
+        "total": total,
+        "limit": filters.limit,
+        "offset": filters.offset,
+        "items": products
     }
 
-def update_product(id , updates:productUpdate) : 
-    product=None 
-    for p in products_DB : 
-        if id == p["id"]:
-            product=p 
-    if product is None :
-        return product 
-    if updates.name : 
-        product["name"]=updates.name 
-    if updates.price : 
-        product["price"]=updates.price 
-    if updates.category: 
-        product["category"]= updates.category 
-    if updates.quantity : 
-        product["quantity"]=updates.quantity 
-    return product 
+def update_product(id , updates:productUpdate , db:Session) : 
+    product= db.exec(select(Product).where(Product.id==id)).first()
+    if product is None: 
+        raise HTTPException(status_code=404 , detail="product not found") 
+    if not any([updates.name , updates.price , updates.quantity , updates.category]): 
+        raise HTTPException(status_code=400 , detail="must provide one update at least")
+    
+    if updates.name is not None:
+        product.name = updates.name   
+    if updates.price is not None:
+        product.price = updates.price
+    if updates.category is not None:
+        product.category = updates.category
+    if updates.quantity is not None:
+        product.quantity = updates.quantity
+
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    
+    return product
+
+def delete_product(id:int , db:Session) : 
+    product = db.exec(select(Product).where(Product.id == id)).first() 
+    if product is None:
+        raise HTTPException(status_code=404 , detail="product not found") 
+    
+    db.delete(product)
+    db.commit()
+    return  {"detail": "Product deleted successfully"}
